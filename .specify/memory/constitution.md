@@ -2,283 +2,99 @@
 
 ## Core Principles
 
-### I. Specification Before Implementation
+### I. Tenant Isolation and Private User Content
 
-Basar AI (basarai.app) is built spec-first. No production code is written for a feature until it
-has an approved Spec Kit specification (`spec.md`) and implementation plan (`plan.md`).
+Each registered user is their own tenant, with one user per tenant and unlimited brands. The ownership hierarchy is User → Brands → Generations. Shared workspaces, invitations, and tenant switching are outside v1 scope.
 
-- Every feature MUST go through `/speckit-specify` → (`/speckit-clarify`) → `/speckit-plan` →
-  `/speckit-tasks` before implementation begins.
-- Implementation MUST NOT add behavior, endpoints, tables, or UI that are absent from the approved
-  spec and plan. Discovered gaps MUST be fed back into the spec/plan first, then implemented.
-- Specs describe WHAT and WHY; plans describe HOW. Technology choices live in plans, not specs.
-- Bug fixes that do not change specified behavior MAY skip a new spec but MUST reference the spec
-  whose behavior they restore.
+Every operation on brands, assets, credentials, and generation jobs MUST enforce ownership on the server. Supabase Row Level Security and private Storage policies MUST enforce the same isolation. Client-supplied owner identifiers MUST NOT establish authorization. Background workers using privileged credentials MUST explicitly verify job ownership and scope all reads and writes.
 
-Rationale: Several AI agents implement this system in parallel. A single approved source of truth
-is the only reliable way to keep their output consistent and reviewable.
+The only application roles are `user` and `admin`. Admin privileges MUST NOT grant access to users’ brand content, prompts, reference images, generated images, individual generation history, or API keys. Admin analytics MUST use aggregate operational data without exposing private content or identifiable activity trails. Admins MAY administer accounts using the minimum necessary identity and account-status information. Exact account actions MUST be specified and audited. Account administration MUST NOT enable impersonation, access to private user content, or inspection of individual activity. Aggregate analytics remain permitted.
 
-### II. Tenant Isolation & Server-Side Authorization
+### II. Secure Bring-Your-Own-Key Processing
 
-The tenant model is **User → Brands → Generations**. A user owns their brands; every brand-scoped
-record (Brand Kit, reference images, generations, edits, assets) belongs to exactly one brand and
-therefore to exactly one user.
+Basar AI MUST support one OpenAI API key and one Gemini API key per user. Keys MUST be validated when saved, encrypted at rest through Supabase Vault or an explicitly reviewed equivalent, and accessed only by authorized backend execution paths.
 
-- The FastAPI backend is the sole authority for authorization and business rules. The frontend
-  MUST NOT be trusted to enforce ownership, role, limits, or validation.
-- Every backend operation on tenant data MUST verify that the authenticated user owns the target
-  resource (or holds the `admin` role for permitted admin operations) before reading or writing.
-- Every database query on tenant data MUST be scoped by owner. Cross-tenant access MUST return
-  "not found" rather than "forbidden", so resource existence is never leaked.
-- Supabase Row Level Security MUST be enabled on all tenant tables as defense in depth, but it
-  does not replace backend authorization checks.
-- The Supabase service-role key MUST exist only in backend runtime configuration.
-- Supabase Storage buckets holding user content MUST be private. Objects MUST be stored under
-  owner-scoped paths and served only through short-lived signed URLs issued by the backend after
-  an ownership check.
-- Roles are exactly `user` and `admin`. Role changes MUST be performed server-side and audited.
+Stored keys MUST NOT be returned to clients, displayed to admins, included in logs, analytics, error messages, job payloads, or committed files. The application MAY return non-secret provider and validation status. Validation failures MUST be actionable without exposing credentials. Provider requests MUST use the requesting user's credentials; another user's key or a platform-funded fallback MUST NOT be used implicitly.
 
-Rationale: A multi-tenant image product stores brand identities and unreleased creative work;
-a single cross-tenant leak is a critical failure.
+Supabase service-role credentials and other privileged secrets MUST remain server-side. Application admins MUST have no decryption or secret-retrieval capability. Infrastructure operators remain a separate trust boundary; implementation plans MUST document privileged infrastructure access rather than claim encryption prevents all operator access.
 
-### III. Secure BYOK Credential Handling (NON-NEGOTIABLE)
+### III. Brand-Guided Image Generation
 
-Users bring their own provider keys (BYOK). The platform stores at most one API key per provider
-(OpenAI, Gemini) per user.
+Basar AI v1 generates images only. Users MUST be able to create and revise a Brand Kit through a guided, step-by-step interview. The kit MUST support brand name, logos, colors, fonts, description, audience, tone of voice, visual style, reference images, products/services, and negative instructions.
 
-- Provider API keys MUST be stored encrypted in Supabase Vault. Plaintext keys MUST NOT be written
-  to regular tables, logs, error messages, analytics, job payloads, queues, or backups outside
-  Vault.
-- After storage, a key MUST NEVER be returned to any client: not to the owning user, not to the
-  frontend, not to admins. The API MAY expose only metadata: provider, a masked suffix (last 4
-  characters at most), status, and created/last-validated timestamps.
-- Keys MUST be decrypted only inside the backend, only at the moment of a provider call, and only
-  for the owning user's own requests. Decrypted values MUST NOT be cached beyond that call.
-- Admin tooling, admin endpoints, and admin database views MUST NOT be able to read, decrypt, or
-  export provider keys.
-- Users MUST be able to replace or delete their key at any time; deletion MUST remove the Vault
-  secret.
-- Keys SHOULD be validated against the provider on save, and a failed validation MUST NOT be
-  stored as an active key.
-- Every AI call (image generation, editing, and the Brand Kit interview) MUST use the requesting
-  user's own key. The platform MUST NOT fall back to a platform-owned key.
+Generation MUST combine the user's request, the selected brand profile, an optional predefined category, and the selected target format. Categories MUST support free-text requests and MUST NOT prevent users from expressing their own instructions. Launch categories are Promotion, Product Showcase, Announcement, Event, Seasonal Greeting, and General. Category behavior and prompt construction belong in the feature specification.
 
-Rationale: Leaked provider keys cost users real money and destroy trust. Treating keys as
-write-only secrets is the core security promise of the product.
+Basar MUST select image models internally from supported provider capabilities. Model identifiers MUST be configurable and recorded as generation metadata rather than embedded throughout UI code. A missing or invalid provider key MUST produce a clear user-facing failure or request for correction.
 
-### IV. Brand-First Generation
+Users MUST be able to regenerate and revise a previous prompt. These actions MUST create new generation records and preserve the original result. V1 editing is limited to revising a prompt and generating again, or regenerating with the same settings. Instruction-based editing of an existing image, resizing tools, background removal, and other editing operations are deferred unless explicitly authorized through a scope amendment.
 
-Every image is generated for a brand, never in a vacuum.
+### IV. Correct Outputs and Durable History
 
-- Every generation MUST belong to exactly one brand. There is no brand-less generation.
-- The brand's Brand Kit (identity, voice, colors, audience, visual style, and so on) MUST be
-  assembled into the generation context server-side. Users add a per-generation brief on top of it.
-- A generation MUST NOT start for a brand whose Brand Kit has not reached the minimum completeness
-  defined in the Brand Kit specification.
-- There are NO predefined creative templates. Output is driven by the Brand Kit, the user's brief,
-  and up to 5 reference images per generation. The backend MUST reject a request with more than 5.
-- Output dimensions MUST come from a server-side registry of platform formats (e.g., Instagram
-  post/story, X, LinkedIn, TikTok). Clients select a format; they MUST NOT send arbitrary sizes
-  that bypass the registry.
-- Prompt-based editing of an existing image MUST create a new generation linked to its source.
-  Originals are never overwritten, so edit history stays traceable.
-- Users may create unlimited brands. There are no billing plans or quotas; features MUST NOT
-  assume either.
+Launch targets are Instagram Post, Instagram Story, Facebook Post, and TikTok cover. Users MUST select a supported target format without manually entering dimensions. Output dimensions MUST come from a maintained format registry and MUST be verified before a result is marked completed. Exact sizes and image export formats belong in the feature specification.
 
-Rationale: Brand consistency is the product's value. Centralizing brand context on the server
-guarantees every output reflects it and keeps prompt assembly auditable.
+Generated images and uploaded brand assets MUST be stored in private Supabase Storage, with authorized download access. Generation history and generated assets MUST be retained indefinitely; there MUST be no age-based automatic expiry. Indefinite retention does not prohibit an explicitly specified user deletion or account-deletion flow.
 
-### V. Brand Kit Interview Workflow
+Generation records MUST preserve the information needed to explain a result: ownership, brand association, prompt and relevant brand snapshot, target format, provider/model, status, timestamps, output references, and sanitized failure details. Subsequent Brand Kit changes MUST NOT rewrite historical generation inputs.
 
-A Brand Kit is created through a guided conversational interview, not a long static form.
+### V. Reliable Asynchronous Execution
 
-- The interview MUST ask questions progressively and adapt follow-ups to prior answers.
-- Interview state MUST be persisted server-side so users can leave and resume without losing
-  answers.
-- The interview MUST produce a structured Brand Kit record with a defined schema. Downstream
-  generation consumes the structured record, never the raw chat transcript.
-- Users MUST be able to review and edit the resulting Brand Kit fields directly after the
-  interview, and re-run or continue the interview to refine it.
-- The interview MUST run in the user's selected language (Arabic or English) and MUST use the
-  user's own provider key (Principle III).
-- Interview and Brand Kit data are tenant data and are subject to Principle II.
+Generation MUST run asynchronously with durable states `queued → processing → completed/failed`. Submission MUST persist the job before acknowledging acceptance. A browser refresh, client disconnect, or container restart MUST NOT silently erase accepted work.
 
-Rationale: Most users cannot describe their brand on command. A guided conversation produces
-richer, more accurate brand context, and a structured result keeps generation deterministic.
+Workers MUST use safe job claiming, bounded retries, timeouts, and recovery of interrupted work. Duplicate submissions and ambiguous provider outcomes MUST be handled explicitly to avoid unnecessary repeated provider charges. Retry rules MUST distinguish safe internal retries from provider requests whose outcome is unknown.
 
-### VI. Provider Independence
+An output MUST be stored and linked to its generation before completion is reported. Failures MUST expose useful, sanitized status in the application. In-app status is sufficient for v1; email and browser notifications are outside the baseline scope. This exclusion does not apply to Supabase Auth account emails (email verification and password reset), which are permitted.
 
-Business logic MUST NOT depend on any single AI provider or model.
+### VI. Arabic and English as First-Class Experiences
 
-- All provider access MUST go through a backend provider/model abstraction with a common interface
-  for capabilities such as text-to-image, image editing, reference-image conditioning, and
-  conversational text generation for the interview.
-- OpenAI and Gemini are the initial adapters. Provider SDK types and provider-specific parameters
-  MUST NOT leak outside their adapter.
-- Available models and their capabilities (supported sizes, reference-image limits, editing
-  support) MUST be declared in a single model catalog in configuration. The UI and validation read
-  from that catalog.
-- Provider errors MUST be normalized into platform error codes (e.g., invalid key, quota
-  exhausted on the provider side, content policy rejection, timeout, provider unavailable).
-- Adding a provider or model MUST NOT require changes to generation, brand, or tenant business
-  logic.
+The application MUST support Arabic and English from launch, including authentication, Brand Kit interviews, generation, history, settings, errors, and admin analytics.
 
-Rationale: The provider market moves quickly. Isolating providers keeps Basar AI able to adopt or
-drop models without rewriting the core.
+Arabic interfaces MUST support right-to-left layout and mixed-direction content such as API-key inputs and model names. Interfaces MUST support keyboard navigation, labeled controls, visible focus, and readable contrast. User-selected output language MUST be respected independently of interface language.
 
-### VII. Asynchronous Generation Architecture
+The attached `basar-app.png` (also supplied as `basar-app(1).png`) is a solution architecture reference, not a UI reference. Architecture plans MUST account for the reference and document any conflicts with confirmed requirements. Its UI appearance MUST NOT be treated as a design requirement. AntiGravity MUST develop a fresh, documented interface direction with a brand selector, generation screen, history gallery, and full Arabic RTL support.
 
-Image generation and editing are asynchronous jobs.
+### VII. Specification-Driven Delivery and Verifiable Quality
 
-- API requests that trigger generation or editing MUST validate input, persist a job, and return
-  immediately with a job/generation ID. Provider calls MUST NOT run inside the HTTP request cycle.
-- Jobs MUST have explicit states: `queued`, `running`, `succeeded`, `failed`, and `cancelled`.
-  Every transition MUST be persisted with timestamps.
-- Workers MUST be idempotent. A retried job MUST NOT produce duplicate generations or duplicate
-  provider charges once the provider call has succeeded.
-- Jobs MUST have timeouts and bounded retries. Retries apply only to transient errors, never to
-  invalid-key or content-policy errors.
-- Failed jobs MUST record a normalized error code the user can understand and act on.
-- The frontend MUST learn job progress through polling or realtime updates and MUST NOT block on
-  generation.
-- Generations and their stored assets MUST be retained for 90 days from creation, then purged by
-  a scheduled, auditable cleanup process that removes both database records and storage objects.
+Work MUST follow Constitution → Feature Specification → Implementation Plan → Tasks → Implementation. Feature specifications MUST describe user outcomes, scope, and testable acceptance criteria. Plans MUST define architecture, contracts, security implications, and dependencies before implementation.
 
-Rationale: Image models are slow and failure-prone. Async jobs keep the API responsive and make
-failures observable and recoverable.
+Database, backend, and frontend work MUST share one project constitution and consistent contracts. Separate feature specifications MUST cover cohesive capabilities rather than placing the entire application in one oversized specification. The project MUST use a monorepo with separate frontend and backend applications, shared specifications, and versioned Supabase migrations. Applications MUST remain independently buildable and deployable; shared contracts MUST NOT create unnecessary runtime coupling.
 
-### VIII. Arabic & English From Day One
+Claude Code with GLM 5 and AntiGravity with Gemini Pro MUST follow the same approved specifications and contracts. Generated code receives the same review and validation as manually written code. Frontend mocks MUST NOT redefine backend behavior or be presented as completed integration.
 
-Arabic (RTL) and English (LTR) are first-class from the first feature. They are not a later
-localization pass.
+Meaningful automated checks MUST cover tenant isolation, admin restrictions, secret handling, authentication, job lifecycle, persistence, and output dimensions. A release MUST demonstrate the core user journey: register → create a brand → add a validated API key → generate a correctly sized branded image → see history → download.
 
-- All user-facing strings MUST be externalized into locale resources. Hard-coded UI text is a
-  defect.
-- Layout MUST use direction-agnostic (logical) styling and set document direction from the active
-  locale. Every screen MUST be verified in both RTL and LTR.
-- The backend MUST return stable error and status codes. Human-readable messages are localized on
-  the frontend.
-- Users MUST be able to choose their interface language. Generation briefs, Brand Kit content,
-  and the interview MUST support Arabic input and output.
-- Specs that involve text rendered inside generated images MUST address Arabic text quality and
-  direction explicitly, because provider support for Arabic in-image text varies.
-- Dates, numbers, and platform names MUST be formatted per locale.
+## Architecture and Product Constraints
 
-Rationale: The product serves Arabic-speaking brands. Retrofitting RTL and localization is far
-more expensive than building them in.
+- Frontend: Next.js 15.x, following current project instructions. A major-version change requires a recorded architecture decision and constitution amendment.
+- Backend: Python with FastAPI. Provider orchestration, secret retrieval, and asynchronous execution remain backend responsibilities. Next.js server routes MAY support frontend integration but MUST NOT duplicate the generation engine.
+- Supabase: Auth for email/password and Google OAuth; PostgreSQL for application data; private Storage for assets; Vault for encrypted provider credentials.
+- Hosting: Next.js and FastAPI on Bunny Magic Containers. Worker processes MUST use persistent external state and MUST NOT rely on container-local files or in-memory queues as the sole record of work.
+- Basar AI is free in v1: no billing, subscriptions, or payment integration. Unlimited brands is a product commitment. Infrastructure protections such as request throttling and concurrency controls MUST be explicit and MUST NOT be disguised as paid quotas.
+- Admin analytics MUST include aggregate users, active users, brands, generation counts, generations by provider/model, failures, storage consumption, and estimated provider usage. Definitions and time windows MUST be documented. Usage and cost estimates MUST be labeled as estimates and MUST NOT be presented as provider invoices.
+- Repository baseline: `apps/web` for Next.js, `apps/api` for FastAPI and backend execution, `supabase/` for migrations and policies, `docs/` for supporting documentation, `.specify/` for Spec Kit configuration and constitution, and `specs/` for feature specifications and plans. Detailed worker packaging belongs in the implementation plan.
+- Exact generation models, platform dimensions, category behavior, and detailed UI design belong in implementation plans or feature specifications. Additional image-editing tools require explicit scope authorization.
 
-### IX. Simplicity Over Speculative Abstraction
+## Development Workflow and Release Gates
 
-Build the simplest thing that satisfies the approved spec.
+Each implementation plan MUST include a Constitution Check mapping relevant principles to the proposed design. Any conflict MUST be resolved before affected implementation begins; an AI coding agent MUST NOT silently waive a requirement.
 
-- The system is one Next.js frontend and one FastAPI backend, with async workers running from the
-  same backend codebase. New deployable services or microservices require written justification in
-  the plan's Complexity Tracking table.
-- Use managed Supabase capabilities (Auth, PostgreSQL, Vault, Storage) before adding new
-  infrastructure. Existing PostgreSQL SHOULD serve as the job queue unless the plan justifies a
-  dedicated broker.
-- Abstractions MUST be justified by a current requirement. The provider abstraction (Principle VI)
-  is required; others are not presumed.
-- No feature flags, plugin systems, generic frameworks, or configuration layers for hypothetical
-  future needs.
-- Dead code, unused endpoints, and unused dependencies MUST be removed rather than kept "just in
-  case".
+Database changes MUST use versioned migrations with appropriate indexes, constraints, and access policies. API contracts MUST describe request/response schemas, ownership checks, errors, and job states. Secrets MUST be provided through environment or secret-management facilities, with safe sample configuration.
 
-Rationale: A small team of agents moves fastest in a codebase with few moving parts, and every
-speculative layer is something every agent must understand.
+Before release, required validation MUST pass for the changed capabilities. Database policy tests MUST demonstrate that one user cannot access another user's rows or assets. Backend tests MUST exercise job recovery and sanitized failures. Frontend checks MUST demonstrate Arabic RTL and English LTR behavior and the end-to-end MVP journey.
 
-### X. Testable Acceptance Criteria & Definition of Done
-
-Every requirement must be verifiable, and "done" has one meaning.
-
-- Every user story in a spec MUST have Given/When/Then acceptance scenarios. Every functional
-  requirement MUST be testable and traceable to at least one test or explicit verification step.
-- Every endpoint that touches tenant data MUST have automated tests proving that another user
-  cannot read or modify it, and that admins cannot retrieve provider keys.
-- Provider adapters MUST be testable against fakes. Automated test suites MUST NOT call real
-  providers or require real keys.
-- A task is **done** only when all of the following hold:
-  1. Acceptance scenarios for the task pass.
-  2. Automated tests are added or updated and pass in CI.
-  3. Database changes are delivered as committed migrations.
-  4. Authorization and tenant-isolation checks are covered by tests.
-  5. UI work is verified in both Arabic (RTL) and English (LTR).
-  6. No secrets appear in code, logs, or fixtures.
-  7. The change has been reviewed by an agent or human other than its author (see Development
-     Workflow).
-  8. Any deviation from the spec or plan is reflected back into those documents.
-
-Rationale: With multiple agents implementing in parallel, explicit and shared completion criteria
-prevent "works on my branch" drift.
-
-## Platform & Technology Constraints
-
-- **Product**: Multi-tenant SaaS social-media image generator at `basarai.app`.
-- **Frontend**: Next.js 15.x. The frontend talks to the FastAPI backend for all business
-  operations. It MAY use Supabase client libraries for authentication flows only, never for
-  direct access to tenant business tables.
-- **Backend**: Python FastAPI, authoritative for authorization, validation, and business rules
-  (Principle II). It hosts the API and the async generation workers.
-- **Supabase**:
-  - Auth: Google OAuth and email/password.
-  - PostgreSQL: system of record.
-  - Vault: provider API keys only.
-  - Storage: private buckets for reference images and generated assets.
-- **Hosting**: Bunny Magic Containers for frontend and backend workloads.
-- **AI providers**: BYOK. OpenAI and Gemini, at most one key per provider per user, accessed only
-  through the provider abstraction.
-- **Roles**: `user` and `admin`. Admins can inspect users, brands, assets, generations, and
-  analytics through admin-only backend endpoints. Admin access MUST be audited and MUST NEVER
-  include provider keys.
-- **Commercial model**: No billing, subscriptions, or quotas. Unlimited brands per user.
-- **Retention**: Generations and their assets are kept for 90 days, then purged.
-- **Database changes**: Schema changes, RLS policies, and seed data MUST ship as versioned,
-  committed migrations. Manual changes to shared environments are prohibited.
-- **Secrets**: All secrets (Supabase service-role key, OAuth secrets, Vault access) come from
-  environment configuration and MUST NOT be committed.
-
-## Development Workflow & Multi-Agent Collaboration
-
-Basar AI is implemented by several AI agents under human direction. All agents MUST follow
-approved Spec Kit specs and plans; no agent may implement unapproved scope.
-
-- **Ownership**:
-  - **Claude Code** owns backend-heavy implementation: FastAPI, the provider abstraction, async
-    workers, the Supabase schema and migrations, RLS, Vault integration, and backend tests.
-  - **AntiGravity (Gemini 3 Pro)** owns frontend implementation: Next.js UI, the Brand Kit
-    interview UI, i18n/RTL, and frontend tests.
-  - **GLM 5.x** is the secondary reviewer and MAY implement tasks explicitly assigned to it in
-    `tasks.md`.
-- **Contract boundary**: The FastAPI API contract (OpenAPI schema and the plan's contracts) is the
-  handoff between backend and frontend. Contract changes MUST be made in the plan/contracts first
-  and communicated before either side implements against them.
-- **Stay in lane**: An agent MUST NOT modify code outside its ownership area unless a task in
-  `tasks.md` explicitly assigns that change to it.
-- **Review**: Every change MUST be reviewed by an agent or human other than its author before
-  merge. Security-sensitive changes (auth, tenant isolation, BYOK, admin access, migrations) MUST
-  also be approved by the human owner.
-- **Branches & commits**: Work happens on feature branches tied to a spec directory under
-  `specs/`. Commits and PRs MUST reference the spec and task IDs they implement.
-- **Constitution Check**: Every `plan.md` MUST pass the Constitution Check gate before tasks are
-  generated, and MUST re-check it after design. Violations MUST be justified in Complexity
-  Tracking or removed.
+Deployment plans MUST document migrations, secrets, persistent job execution, health checks, and recovery procedures. Operational logs MUST support diagnosis without recording private prompts, images, or credentials. Any unresolved acceptance failure MUST be disclosed; incomplete features MUST NOT be marked delivered.
 
 ## Governance
 
-- This constitution supersedes all other development practices, agent instructions, and runtime
-  guidance files (such as `CLAUDE.md` or other agent rule files). Where they conflict, this
-  document wins and the conflicting guidance MUST be corrected.
-- **Amendments** MUST be made via `/speckit-constitution`, recorded in a commit that updates this
-  file, and approved by the human project owner. Amendments that affect existing features MUST
-  include a migration note describing what must change.
-- **Versioning** follows semantic versioning:
-  - MAJOR: removing or redefining a principle, or other backward-incompatible governance changes.
-  - MINOR: adding a principle or section, or materially expanding guidance.
-  - PATCH: clarifications, wording, and typo fixes.
-- **Compliance**: Every spec, plan, task list, and code review MUST verify alignment with these
-  principles. Reviewers MUST reject changes that violate Principles II or III regardless of other
-  merits. Unjustified complexity (Principle IX) is grounds for rejection.
-- **Review cadence**: The constitution SHOULD be reviewed at the start of each major feature
-  phase, and whenever the stack, hosting, or provider set changes.
+This constitution is the authoritative project-wide baseline for specifications, plans, tasks, implementation, and review. New user decisions that change these requirements MUST be recorded through an amendment before conflicting work proceeds.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-28 | **Last Amended**: 2026-09-28
+Amendments MUST state the reason, affected principles, migration or compatibility implications, and dependent specifications needing updates. Versioning follows semantic versioning: MAJOR for incompatible governance or product changes, MINOR for new principles or materially expanded requirements, PATCH for clarifications that preserve intent.
+
+This document derives from the latest answers in this conversation; it does not claim to amend an inspected repository constitution. Its adoption supersedes earlier planning assumptions about templates, 90-day retention, broad admin content access, and the attachment as a UI reference.
+
+Amendment 1.1.0 confirms Next.js 15.x, permits account administration while preserving content privacy and aggregate analytics, adopts a monorepo, fixes v1 editing scope and launch categories, and clarifies the attachment as a solution architecture reference with a fresh frontend design. Future feature specifications and plans MUST use these decisions; no repository specifications were available to synchronize in this session.
+
+Amendment 1.1.1 (PATCH) clarifies Principle V: Supabase Auth verification and password-reset emails are permitted; all other email notifications remain excluded from v1. Reason: owner decision of 2026-09-29 (OD-001). Affected principle: V. No migration impact. Dependent specification updated: `specs/001-auth-roles/spec.md`.
+
+Amendment 1.1.2 (PATCH) clarifies Principle VII: in addition to user-outcome feature specifications, the project MAY use layer specifications (database, backend, frontend) as implementation specifications, provided each cites the user-outcome specification or approved blueprint it implements, is organized into milestone sections with their own acceptance criteria, and shares one contract set. Reason: owner decision of 2026-10-03 recorded in `docs/blueprint.md` (D-01). Affected principle: VII. No migration impact. Dependent documents: `docs/blueprint.md`, `specs/001-auth-roles/spec.md` (FR-026 now points to v1 deletion defined in the blueprint, which Principle IV already permits).
+
+**Version**: 1.1.2 | **Ratified**: 2026-10-01 | **Last Amended**: 2026-10-03
