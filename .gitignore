@@ -1,0 +1,143 @@
+# Basar AI monorepo — root .gitignore
+# Rules apply repository-wide. Lockfiles (pnpm-lock.yaml, uv.lock) and the generated
+# API client (packages/api-client) are intentionally committed — do not ignore them.
+
+# ---------------------------------------------------------------------------
+# Secrets and local configuration (never commit real credentials)
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.p12
+*.pfx
+*.key
+!**/*.pub.key
+secrets/
+credentials.json
+service-account*.json
+
+# ---------------------------------------------------------------------------
+# Operating systems
+# ---------------------------------------------------------------------------
+.DS_Store
+.AppleDouble
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# ---------------------------------------------------------------------------
+# Editors and IDEs
+# ---------------------------------------------------------------------------
+# JetBrains (PyCharm/WebStorm): project files are per-developer here
+.idea/
+*.iml
+*.iws
+out/production/
+
+# VS Code: share only recommended extensions and workspace settings
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Vim / Emacs / misc
+*.swp
+*.swo
+*~
+\#*\#
+.#*
+
+# ---------------------------------------------------------------------------
+# AI coding tools (shared skills/config are committed; personal state is not)
+# ---------------------------------------------------------------------------
+.claude/settings.local.json
+CLAUDE.local.md
+
+# ---------------------------------------------------------------------------
+# Node.js / pnpm / Next.js (apps/web, packages/*)
+# ---------------------------------------------------------------------------
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.yarn/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+.turbo/
+.vercel/
+.eslintcache
+.stylelintcache
+
+# Test and coverage output
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# ---------------------------------------------------------------------------
+# Python / uv (apps/api, supabase/tests/integration)
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+*.egg-info/
+.eggs/
+build/
+dist/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyright/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+*.prof
+
+# Live provider smoke-test output (may contain generated images)
+apps/api/tests/live/output/
+
+# ---------------------------------------------------------------------------
+# Supabase CLI (local stack state; migrations, tests, config.toml are committed)
+# ---------------------------------------------------------------------------
+supabase/.branches/
+supabase/.temp/
+supabase/.env
+supabase/.env.keys
+supabase/.env.local
+supabase/.env.*.local
+
+# ---------------------------------------------------------------------------
+# Docker and local tooling
+# ---------------------------------------------------------------------------
+docker-compose.override.yml
+.docker/
+
+# ---------------------------------------------------------------------------
+# Logs, temp files, archives
+# ---------------------------------------------------------------------------
+logs/
+*.log
+tmp/
+temp/
+*.tmp
+*.bak
+*.orig
+*.rej
+*.zip
+*.tar.gz
