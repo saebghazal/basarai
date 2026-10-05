@@ -1,0 +1,51 @@
+# Basar AI — line endings and file handling
+# Text files are stored with LF in the repository and checked out with LF on every OS,
+# so shell scripts, Dockerfiles, SQL migrations, and generated files behave identically
+# on Windows, macOS, Linux, CI, and inside containers.
+
+# Default: let Git detect text files and normalize them to LF.
+* text=auto eol=lf
+
+# Windows-only scripts that require CRLF.
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+
+# Source and config (explicit for clarity).
+*.ts    text eol=lf
+*.tsx   text eol=lf
+*.js    text eol=lf
+*.mjs   text eol=lf
+*.cjs   text eol=lf
+*.json  text eol=lf
+*.css   text eol=lf diff=css
+*.py    text eol=lf diff=python
+*.sql   text eol=lf
+*.sh    text eol=lf diff=bash
+*.ps1   text eol=lf
+*.md    text eol=lf diff=markdown
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.toml  text eol=lf
+Dockerfile  text eol=lf
+*.Dockerfile text eol=lf
+
+# Binary assets: never normalize or diff as text.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.webp  binary
+*.gif   binary
+*.ico   binary
+*.pdf   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+*.zip   binary
+*.gz    binary
+
+# Lockfiles and generated code: collapse in GitHub diffs, skip from language stats.
+pnpm-lock.yaml                 -diff linguist-generated=true
+uv.lock                        -diff linguist-generated=true
+packages/api-client/schema.d.ts linguist-generated=true
+packages/api-client/openapi.json linguist-generated=true
