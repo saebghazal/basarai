@@ -44,19 +44,20 @@ automated checks). Within each story, test tasks come first and must fail before
 - [X] T004 [P] Create `packages/api-client/`: `package.json` (name `@basar/api-client`, `private: true`, `main`/`types` → `src/index.ts`, dependency `openapi-fetch`, devDependency `openapi-typescript`, script `generate`: `openapi-typescript openapi.json -o src/schema.d.ts`), placeholder `src/index.ts`
 - [X] T005 [P] Add root `.editorconfig` (UTF-8, LF, 2-space for JS/TS/JSON/YAML/MD, 4-space for Python), `.prettierrc.json`, `.prettierignore` (generated client, lockfiles, `.next`)
 - [X] T006 [P] Add `.github/dependabot.yml` covering `npm` (root), `uv` (`/apps/api`), `github-actions` (`/`), and `docker` (`/apps/web`, `/apps/api`), weekly, grouped minor/patch
-- [ ] T007 Run `pnpm install` at the root to produce `pnpm-lock.yaml`; confirm `pnpm --filter web build` and `uv --directory apps/api run python -c "import basar"` succeed
+- [X] T007 Run `pnpm install` at the root to produce `pnpm-lock.yaml`; confirm `pnpm --filter web build` and `uv --directory apps/api run python -c "import basar"` succeed
 
 **Phase 1 execution notes (2026-10-07)**:
 
 - Baseline for ADR 0002 (T071): Node 24.15.0, pnpm 10.34.6, Python 3.12.13,
   uv 0.11.14, create-next-app and Next.js 15.5.27. Exact dependency versions are in
   `pnpm-lock.yaml` and `apps/api/uv.lock`.
-- T007 partially verified: `corepack pnpm install` produced `pnpm-lock.yaml`; the
-  required Python import, Ruff lint/format, and strict mypy checks passed.
-- `corepack pnpm --filter web build` compiled and passed lint/type checks, then failed
-  creating standalone-output symlinks with Windows `EPERM`. T007 remains unchecked.
-  Enable Windows Developer Mode (or run in a shell with symlink privileges), then
-  rerun the build before declaring Phase 1 complete. Phase 2 awaits owner review.
+- T007 verified: `corepack pnpm install` produced `pnpm-lock.yaml`; the required
+  Python import, Ruff lint/format, and strict mypy checks passed.
+- `corepack pnpm --filter web build` initially failed creating standalone-output
+  symlinks with Windows `EPERM`. After the phase 1 review fixes (`cd10bbd`) and with
+  symlink privileges available (Windows Developer Mode), the build succeeds and
+  produces `apps/web/.next/standalone/`. Phase 1 is complete; Phase 2 awaits owner
+  review.
 
 ---
 
