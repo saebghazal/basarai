@@ -1,0 +1,18 @@
+{
+  "name": "basarai",
+  "private": true,
+  "packageManager": "pnpm@10.34.6",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "node -e \"console.log('Platform dev orchestration will be added in T022.')\"",
+    "lint": "node -e \"console.log('Platform lint orchestration will be added in T022.')\"",
+    "test": "node -e \"console.log('Platform test orchestration will be added in T022.')\"",
+    "format": "node -e \"console.log('Platform formatting orchestration is not configured yet.')\"",
+    "contracts:check": "node -e \"console.log('Contract drift checks will be added in T048.')\""
+  },
+  "devDependencies": {
+    "prettier": "^3.9.9"
+  }
+}

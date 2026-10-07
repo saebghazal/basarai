@@ -38,13 +38,25 @@ automated checks). Within each story, test tasks come first and must fail before
 
 **Purpose**: Workspace, package skeletons, formatting, dependency updates.
 
-- [ ] T001 Create root `package.json` (`"private": true`, `"packageManager": "pnpm@10.<latest>"`, `"engines": {"node": ">=24"}`, scripts `dev`, `lint`, `test`, `format`, `contracts:check` as placeholders), `pnpm-workspace.yaml` (`packages: ["apps/web", "packages/*"]`), and `.nvmrc` containing `24`
-- [ ] T002 [P] Create the uv project in `apps/api/`: `pyproject.toml` (project `basar`, `requires-python = ">=3.12,<3.13"`, src layout `src/basar`; dependencies `fastapi`, `uvicorn[standard]`, `pydantic>=2`, `pydantic-settings`, `psycopg[binary,pool]>=3.2`, `pyjwt[crypto]`, `httpx`, `structlog`, `python-ulid`; dev group `pytest`, `pytest-asyncio`, `respx`, `ruff`, `mypy`, `cryptography`; ruff config with rule sets `E,F,I,B,UP,S,ASYNC` incl. `S608`; mypy `strict = true` for `src`; pytest `asyncio_mode = "auto"`), `apps/api/.python-version` = `3.12`, `apps/api/src/basar/__init__.py`, then `uv lock` to create `apps/api/uv.lock`
-- [ ] T003 [P] Scaffold `apps/web/` with the latest `create-next-app@15` (TypeScript, App Router, `src/` dir, ESLint, Tailwind, import alias `@/*`, no example content); set `apps/web/package.json` name `web`; `tsconfig.json` `strict: true`, `noUncheckedIndexedAccess: true`; `next.config.ts` with `output: 'standalone'`; pin `next` to `15.x` (never 16) and record the version for ADR 0002
-- [ ] T004 [P] Create `packages/api-client/`: `package.json` (name `@basar/api-client`, `private: true`, `main`/`types` → `src/index.ts`, dependency `openapi-fetch`, devDependency `openapi-typescript`, script `generate`: `openapi-typescript openapi.json -o src/schema.d.ts`), placeholder `src/index.ts`
-- [ ] T005 [P] Add root `.editorconfig` (UTF-8, LF, 2-space for JS/TS/JSON/YAML/MD, 4-space for Python), `.prettierrc.json`, `.prettierignore` (generated client, lockfiles, `.next`)
-- [ ] T006 [P] Add `.github/dependabot.yml` covering `npm` (root), `uv` (`/apps/api`), `github-actions` (`/`), and `docker` (`/apps/web`, `/apps/api`), weekly, grouped minor/patch
+- [X] T001 Create root `package.json` (`"private": true`, `"packageManager": "pnpm@10.<latest>"`, `"engines": {"node": ">=24"}`, scripts `dev`, `lint`, `test`, `format`, `contracts:check` as placeholders), `pnpm-workspace.yaml` (`packages: ["apps/web", "packages/*"]`), and `.nvmrc` containing `24`
+- [X] T002 [P] Create the uv project in `apps/api/`: `pyproject.toml` (project `basar`, `requires-python = ">=3.12,<3.13"`, src layout `src/basar`; dependencies `fastapi`, `uvicorn[standard]`, `pydantic>=2`, `pydantic-settings`, `psycopg[binary,pool]>=3.2`, `pyjwt[crypto]`, `httpx`, `structlog`, `python-ulid`; dev group `pytest`, `pytest-asyncio`, `respx`, `ruff`, `mypy`, `cryptography`; ruff config with rule sets `E,F,I,B,UP,S,ASYNC` incl. `S608`; mypy `strict = true` for `src`; pytest `asyncio_mode = "auto"`), `apps/api/.python-version` = `3.12`, `apps/api/src/basar/__init__.py`, then `uv lock` to create `apps/api/uv.lock`
+- [X] T003 [P] Scaffold `apps/web/` with the latest `create-next-app@15` (TypeScript, App Router, `src/` dir, ESLint, Tailwind, import alias `@/*`, no example content); set `apps/web/package.json` name `web`; `tsconfig.json` `strict: true`, `noUncheckedIndexedAccess: true`; `next.config.ts` with `output: 'standalone'`; pin `next` to `15.x` (never 16) and record the version for ADR 0002
+- [X] T004 [P] Create `packages/api-client/`: `package.json` (name `@basar/api-client`, `private: true`, `main`/`types` → `src/index.ts`, dependency `openapi-fetch`, devDependency `openapi-typescript`, script `generate`: `openapi-typescript openapi.json -o src/schema.d.ts`), placeholder `src/index.ts`
+- [X] T005 [P] Add root `.editorconfig` (UTF-8, LF, 2-space for JS/TS/JSON/YAML/MD, 4-space for Python), `.prettierrc.json`, `.prettierignore` (generated client, lockfiles, `.next`)
+- [X] T006 [P] Add `.github/dependabot.yml` covering `npm` (root), `uv` (`/apps/api`), `github-actions` (`/`), and `docker` (`/apps/web`, `/apps/api`), weekly, grouped minor/patch
 - [ ] T007 Run `pnpm install` at the root to produce `pnpm-lock.yaml`; confirm `pnpm --filter web build` and `uv --directory apps/api run python -c "import basar"` succeed
+
+**Phase 1 execution notes (2026-10-07)**:
+
+- Baseline for ADR 0002 (T071): Node 24.15.0, pnpm 10.34.6, Python 3.12.13,
+  uv 0.11.14, create-next-app and Next.js 15.5.27. Exact dependency versions are in
+  `pnpm-lock.yaml` and `apps/api/uv.lock`.
+- T007 partially verified: `corepack pnpm install` produced `pnpm-lock.yaml`; the
+  required Python import, Ruff lint/format, and strict mypy checks passed.
+- `corepack pnpm --filter web build` compiled and passed lint/type checks, then failed
+  creating standalone-output symlinks with Windows `EPERM`. T007 remains unchecked.
+  Enable Windows Developer Mode (or run in a shell with symlink privileges), then
+  rerun the build before declaring Phase 1 complete. Phase 2 awaits owner review.
 
 ---
 

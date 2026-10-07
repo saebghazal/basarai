@@ -1,0 +1,12 @@
+node_modules/
+dist/
+build/
+coverage/
+.next/
+.venv/
+packages/api-client/openapi.json
+packages/api-client/src/schema.d.ts
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+uv.lock

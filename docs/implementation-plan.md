@@ -527,7 +527,7 @@ the OpenAI/Gemini SDK loggers are set to WARNING with the redaction processor.
 ### 8.4 Purge, cleanup, reconcile
 
 - **Purge**: `worker_claim_purge` → delete each returned object via Storage API (404 tolerated) →
-  `worker_purge_rows` → for accounts, Auth Admin `DELETE /auth/v1/admin/users/{id}` → 
+  `worker_purge_rows` → for accounts, Auth Admin `DELETE /auth/v1/admin/users/{id}` →
   `worker_complete_purge`. Idempotent; safe to re-run (002 FR-045).
 - **Uploads cleanup**: `worker_abandoned_uploads` → delete object → `worker_forget_asset`.
 - **Reconcile**: list bucket objects page by page, call `worker_storage_reconcile`, delete only
