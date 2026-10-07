@@ -83,7 +83,7 @@ Versions are the targets for M0. Pin exact versions in lockfiles at M0 and recor
 
 | Concern | Choice |
 |---------|--------|
-| Framework | Next.js **15.x** App Router (constitution), React 19, Node.js 22 LTS |
+| Framework | Next.js **15.x** App Router (constitution), React 19, Node.js 24 LTS (003 research R2) |
 | Language | TypeScript 5.x, `strict: true`, `noUncheckedIndexedAccess: true` |
 | Styling / UI | Tailwind CSS 4, shadcn/ui (Radix primitives), lucide icons |
 | i18n / RTL | `next-intl` (locale-prefixed routes `/en`, `/ar`), `dir` set on `<html>`; logical CSS properties only |
@@ -667,7 +667,7 @@ Same region for Supabase and Bunny containers (V-03/V-06).
 
 | Image | Base | Command | Health |
 |-------|------|---------|--------|
-| `ghcr.io/<org>/basar-web` | `node:22-alpine` (Next.js `output: 'standalone'`) | `node server.js` | `GET /api/health` (static 200) |
+| `ghcr.io/<org>/basar-web` | `node:24-alpine` (Next.js `output: 'standalone'`) | `node server.js` | `GET /api/health` (static 200) |
 | `ghcr.io/<org>/basar-api` | `python:3.12-slim` + uv | `uvicorn basar.main:app --port 8000 --workers 2` | `/health/live`, `/health/ready` |
 | `ghcr.io/<org>/basar-worker` | same Dockerfile, target `worker` | `python -m basar.worker_main` | process liveness + heartbeat file age |
 
@@ -693,13 +693,18 @@ names only.
 
 ### 12.4 CI workflows (`.github/workflows/`)
 
-| Workflow | Trigger | Steps |
+One `ci.yml` workflow runs path-filtered jobs plus an always-reporting `ci-gate` job, which is the
+only required status on `main` (003 research R16; separate path-filtered workflows can't be required
+without blocking unrelated PRs). Details: `specs/003-platform-foundation/contracts/ci-checks.md`.
+
+| Workflow / job | Trigger | Steps |
 |----------|---------|-------|
-| `database.yml` | `supabase/**` | CLI start → `db reset` → `test db` → pytest integration |
-| `api.yml` | `apps/api/**` | ruff → mypy → pytest (unit, contract, integration with local Supabase) → pip-audit |
-| `web.yml` | `apps/web/**`, `packages/**` | pnpm install → lint → typecheck → vitest → `next build` → i18n key check |
-| `contracts.yml` | `apps/api/**`, `packages/api-client/**` | export OpenAPI → generate client → fail on diff |
-| `security.yml` | all PRs + weekly | gitleaks, dependency audit |
+| `ci.yml` → `database` | `supabase/**` | CLI start → `db reset` → `test db` → pytest integration |
+| `ci.yml` → `api` | `apps/api/**` | ruff → mypy → pytest (unit, contract, integration with local Supabase) |
+| `ci.yml` → `web` | `apps/web/**`, `packages/**` | pnpm install → lint → typecheck → vitest → i18n key check → `next build` → shell e2e + axe |
+| `ci.yml` → `contracts` | `apps/api/**`, `packages/api-client/**` | export OpenAPI → generate client → fail on diff |
+| `ci.yml` → `security` | all PRs + weekly | gitleaks, pnpm audit, pip-audit |
+| `ci.yml` → `ci-gate` | always | fails if any needed job failed |
 | `images.yml` | push to `main` | build + push three images tagged with SHA |
 | `deploy.yml` | manual / tag | staging: migrate → deploy worker → deploy web+api → smoke; production: same with approval |
 
