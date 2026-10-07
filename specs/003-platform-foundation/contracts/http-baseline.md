@@ -64,7 +64,26 @@ Page:        # generic list wrapper used from M1 on
   properties:
     items:       { type: array }
     next_cursor: { type: [string, "null"] }
+
+# Shared identifiers (implementation plan §5.1; values must equal the 002 database enums)
+AppRole:             { enum: [user, admin] }
+AccountLifecycle:    { enum: [active, deletion_pending] }
+BrandStatus:         { enum: [draft, ready, archived] }
+Provider:            { enum: [openai, gemini] }
+KeyAuthStatus:       { enum: [valid, invalid, insufficient_permission, unchecked] }
+KeyCapabilityStatus: { enum: [confirmed, unknown, denied, quota_exhausted] }
+OutputLanguage:      { enum: [ar, en, "ar+en"] }
+UiLocale:            { enum: [ar, en] }
+GenerationAction:    { enum: [new, regenerate, revise] }
+GenerationStatus:    { enum: [queued, processing, completed, failed] }
+FormatId:            { enum: [ig_post, ig_story, fb_post, tiktok_cover] }
+CategoryId:          { enum: [promotion, product_showcase, announcement, event, seasonal_greeting, general] }
 ```
+
+Reusable parameters (in `components.parameters`): `Cursor` (query, string, optional), `Limit`
+(query, integer 1–100, default 30), `IdempotencyKey` (header `Idempotency-Key`, string ≤ 128,
+required where used). No endpoint in this feature uses them yet; they are exported so the client and
+later specs share one definition.
 
 ## Status mapping
 

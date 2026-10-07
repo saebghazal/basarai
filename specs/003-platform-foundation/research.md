@@ -84,6 +84,12 @@ implementation and recorded in `docs/verification/m0-checkpoints.md` (FR-039).
   Accept only asymmetric algorithms (`ES256`, `RS256`); require `exp`, `iat`, `sub`;
   `iss = https://<ref>.supabase.co/auth/v1`; `aud = authenticated`; 30 s leeway. Reject `HS256`
   unless `SUPABASE_JWT_LEGACY_SECRET` is configured (only if V-04 finds a legacy project).
+- **Local stack**: the Supabase CLI signs local tokens with a shared HS256 secret unless an
+  asymmetric key is configured. Setup generates a local ES256 key (`supabase gen signing-key
+  --algorithm ES256` → `supabase/signing_keys.json`, git-ignored) and sets
+  `[auth] signing_keys_path = "./signing_keys.json"` in `supabase/config.toml`, so local, CI, and
+  staging all use the JWKS path. Fallback if the CLI option is unavailable: set
+  `SUPABASE_JWT_LEGACY_SECRET` locally only, recorded under V-04.
 - **Rationale**: FR-018 and edge case "signing keys rotate". The issuer format and JWKS path come
   from Supabase JWT docs.
 - **Alternatives**: Calling Supabase `GET /auth/v1/user` per request — adds latency and a dependency
@@ -188,8 +194,11 @@ implementation and recorded in `docs/verification/m0-checkpoints.md` (FR-039).
   calls use the Bunny API with `BUNNY_API_KEY` **(V-03: confirm API endpoints for updating a
   container image, endpoint-less containers, probes, min replicas)**; if no API exists, the step is a
   documented manual action and SC-005 is measured manually.
-- **Previous SHA**: stored as a GitHub environment variable `LAST_GOOD_SHA_STAGING` updated after a
-  successful health gate.
+- **Previous SHA**: each run creates a GitHub Deployment (`environment: staging`, `ref: <sha>`) and
+  sets its status to `success` after the health gate or `failure` otherwise
+  (`permissions: deployments: write` on `GITHUB_TOKEN`). The rollback target is the SHA of the most
+  recent `success` deployment. Environment variables are not used because `GITHUB_TOKEN` cannot write
+  them.
 - **Rationale**: FR-034, FR-037, SC-005. Containers in one Bunny app share `localhost` (Bunny docs),
   so the API container needs no public endpoint (FR-035).
 

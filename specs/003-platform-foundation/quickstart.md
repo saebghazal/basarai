@@ -13,6 +13,7 @@ in `supabase/.cli-version`). Windows, macOS, or Linux.
 git clone https://github.com/saebghazal/basarai.git && cd basarai
 corepack enable && pnpm install --frozen-lockfile
 (cd apps/api && uv sync)
+pnpm setup:keys                                   # local ES256 signing key (git-ignored)
 supabase start && supabase db reset
 cp apps/web/.env.example apps/web/.env.local     # fill values printed by `supabase status`
 cp apps/api/.env.example apps/api/.env            # same

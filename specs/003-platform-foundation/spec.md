@@ -353,8 +353,9 @@ follow-up.
 
 **Environments and delivery**
 
-- **FR-032**: The project MUST have separate local, staging, and production environments with
-  separate data platforms and credentials.
+- **FR-032**: The project MUST have separate local and staging environments with separate data
+  platforms and credentials in this feature; the production environment is created at release (M8)
+  under the same separation rule (no data platform or credential shared between environments).
 - **FR-033**: Each reviewed version on the main line MUST produce immutable, versioned images for
   the web, backend, and worker, running as non-privileged users and containing no secrets.
 - **FR-034**: Staging deployment MUST apply database changes first, then deploy the worker, then the

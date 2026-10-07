@@ -17,7 +17,8 @@ no force-push, linear history optional.
 
 Seeded-failure verification for SC-003 (run once at M0 exit, each on a throwaway branch):
 type error in web, failing pytest, ruff violation, a realistic-looking but invalid OpenAI-shaped key (`sk-proj-` + 48 random characters) in a non-test file (test fixtures use `sk-test-fake-NNNN`, which `.gitleaks.toml` allowlists only under test directories), edited
-`schema.d.ts` by hand, missing `ar` translation, `ml-4` class in a component.
+`schema.d.ts` by hand, missing `ar` translation, `ml-4` class in a component, MSW code present in a
+production build.
 
 Workflow `images.yml` (push to `main`): build three images, tag with SHA, push to GHCR.
 Workflow `deploy.yml` (manual, `environment: staging`): research R18 sequence.

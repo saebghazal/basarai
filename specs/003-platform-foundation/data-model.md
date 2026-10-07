@@ -27,7 +27,7 @@ Rule: an application refuses to start if a required setting is missing (FR-005).
 | data platform | local Supabase CLI stack; `basar-staging`; `basar-prod` (M8) |
 | hosting | local processes / Docker; Bunny apps `basar-web-staging` + `basar-worker-staging`; production apps at M8 |
 | secrets store | `.env` files (local, git-ignored); GitHub environment secrets + Bunny app secrets |
-| last good version | `LAST_GOOD_SHA_<ENV>` (GitHub environment variable), updated after a passing health gate |
+| last good version | SHA of the most recent GitHub Deployment for that environment with status `success` (GitHub Deployments API), created by the deploy workflow after a passing health gate |
 
 Rule: no credential is shared between environments (FR-032).
 
@@ -42,7 +42,9 @@ Rule: no credential is shared between environments (FR-032).
 | drift rule | regenerated document and client must equal the committed files (FR-014) |
 
 Shared schemas defined in [contracts/http-baseline.md](./contracts/http-baseline.md): `ErrorEnvelope`,
-`ErrorCode`, `Page<T>`, `HealthStatus`, `SessionInfo`.
+`ErrorCode`, `Page`, `HealthStatus`, `SessionInfo`, the twelve shared identifier enums (`AppRole` …
+`CategoryId`, values equal to the 002 database enums), and parameters `Cursor`, `Limit`,
+`IdempotencyKey`.
 
 ## 4. Translation catalog
 
