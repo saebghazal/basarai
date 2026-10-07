@@ -10,3 +10,8 @@ package-lock.json
 yarn.lock
 pnpm-lock.yaml
 uv.lock
+.specify/
+.opencode/
+.claude/
+specs/
+docs/
