@@ -185,11 +185,13 @@ implementation and recorded in `docs/verification/m0-checkpoints.md` (FR-039).
 
 ## R18. Staging deployment and rollback (V-03)
 
-- **Decision**: Workflow `deploy.yml` (manual `workflow_dispatch` with `environment: staging`,
-  input `sha`): (1) `supabase db push` with `SUPABASE_ACCESS_TOKEN` + DB password from environment
+- **Decision**: Workflow `deploy.yml` with two triggers: `workflow_run` on `images.yml` completing
+  successfully for a push to `main` (deploys that run's SHA automatically), and manual
+  `workflow_dispatch` (input `sha`, any earlier reviewed version); `environment: staging`,
+  `concurrency: deploy-staging` (queued, not cancelled). Steps: (1) `supabase db push` with `SUPABASE_ACCESS_TOKEN` + DB password from environment
   secrets; (2) update Bunny app `basar-worker-staging` image to `sha`; (3) update
-  `basar-web-staging` (web + api containers) to `sha`; (4) poll `https://<staging>/api/health` (web) and
-  `https://<staging>/api/health/ready` (web route forwarding to the API's `/health/ready`, R19)
+  `basar-web-staging` (web + api containers) to `sha`; (4) poll `https://staging.basarai.app/api/health` (web) and
+  `https://staging.basarai.app/api/health/ready` (web route forwarding to the API's `/health/ready`, R19)
   until healthy or 5 min; on failure redeploy the previous recorded SHA. Bunny update
   calls use the Bunny API with `BUNNY_API_KEY` **(V-03: confirm API endpoints for updating a
   container image, endpoint-less containers, probes, min replicas)**; if no API exists, the step is a
@@ -220,5 +222,8 @@ implementation and recorded in `docs/verification/m0-checkpoints.md` (FR-039).
 
 - **Decision**: Playwright tests visit every shell page in `en` and `ar`, run axe with WCAG 2.2 AA
   tags (fail on serious/critical), and a keyboard test tabs through all interactive elements
-  asserting visible focus (`:focus-visible` outline) and order.
+  asserting visible focus (`:focus-visible` outline) and order. Projects on every change:
+  `Desktop Chrome`, `Desktop Safari` (WebKit), `Pixel 7` (Chromium mobile), `iPhone 15` (WebKit
+  mobile); keyboard-traversal tests run in the desktop projects only. Firefox is a manual pre-release
+  check (spec clarification 2026-10-07).
 - **Rationale**: FR-030, SC-006.

@@ -36,6 +36,9 @@ Fail-fast (FR-005): unset `DATABASE_URL` and start the API → exits with a mess
 pnpm --filter web test:e2e -- shell
 ```
 
+Runs in Desktop Chrome, Desktop Safari (WebKit), Pixel 7, and iPhone 15 projects. Before release,
+repeat these checks manually in Firefox.
+
 Expected: `/en` is `lang=en dir=ltr`, `/ar` is `lang=ar dir=rtl`; switching on `/en/about` lands on
 `/ar/about`; keyboard traversal reaches every control with visible focus; axe reports no serious or
 critical violations in either locale.
@@ -69,9 +72,12 @@ Open a clean PR → `ci-gate` passes in < 15 min. Open the seeded-failure PRs li
 
 ## 6. Staging deploy and rollback (US6, SC-005, SC-008)
 
-1. Run workflow **deploy** with `environment=staging`, `sha=<main SHA>`.
+1. Merge a change into `main` → `images` runs → `deploy` starts automatically for that SHA. (Manual
+   alternative: run workflow **deploy** with `environment=staging`, `sha=<earlier SHA>`.)
 2. Expected order in the log: migrations → worker → web+api; health gate passes; total < 20 min.
-3. `curl -I https://<staging-host>/en` → 200; `/api/health/ready` → 200 in < 1 s.
+3. `curl -I https://staging.basarai.app/en` → 401 with `WWW-Authenticate: Basic`; with
+   `-u <user>:<password>` → 200 and `X-Robots-Tag: noindex, nofollow`; `/api/health/ready` → 200
+   without credentials in < 1 s.
 4. Confirm the API and worker have no public address (Bunny dashboard: no endpoint on those
    containers; direct port access refused).
 5. Deploy a SHA whose `/health/ready` is forced to fail → gate fails → previous SHA redeployed;

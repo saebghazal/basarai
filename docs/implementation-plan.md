@@ -706,7 +706,7 @@ without blocking unrelated PRs). Details: `specs/003-platform-foundation/contrac
 | `ci.yml` → `security` | all PRs + weekly | gitleaks, pnpm audit, pip-audit |
 | `ci.yml` → `ci-gate` | always | fails if any needed job failed |
 | `images.yml` | push to `main` | build + push three images tagged with SHA |
-| `deploy.yml` | manual / tag | staging: migrate → deploy worker → deploy web+api → smoke; production: same with approval |
+| `deploy.yml` | staging: automatic after `images.yml` succeeds on `main`, or manual for an earlier SHA; production: manual with approval | migrate → deploy worker → deploy web+api → health gate → rollback on failure |
 
 ### 12.5 Deployment order
 

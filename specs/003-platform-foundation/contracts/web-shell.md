@@ -19,6 +19,17 @@
 - Technical values render in `<bdi dir="ltr">`.
 - All text from `messages/{en,ar}.json`.
 
+## Staging access gate (FR-040)
+
+| Environment | Password gate | Search-engine instructions |
+|-------------|---------------|----------------------------|
+| `local` | off | `X-Robots-Tag: noindex, nofollow`; `robots.txt` disallows all |
+| `staging` | HTTP Basic auth (`STAGING_ACCESS_USER` / `STAGING_ACCESS_PASSWORD`, constant-time compare) on every path except `/api/health` and `/api/health/ready`; failure → 401 with `WWW-Authenticate: Basic realm="Basar staging"` | same as local |
+| `production` | off | normal indexing; `robots.txt` allows all |
+
+The gate runs first in middleware (before locale routing and session refresh). Startup fails when
+`ENVIRONMENT=staging` and either variable is missing.
+
 ## Proxy rules (`/api/v1/*`)
 
 | Rule | Value |

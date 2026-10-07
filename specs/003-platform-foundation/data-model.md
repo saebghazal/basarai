@@ -25,7 +25,7 @@ Rule: an application refuses to start if a required setting is missing (FR-005).
 |-------|----------------|
 | name | `local`, `staging`, `production` |
 | data platform | local Supabase CLI stack; `basar-staging`; `basar-prod` (M8) |
-| hosting | local processes / Docker; Bunny apps `basar-web-staging` + `basar-worker-staging`; production apps at M8 |
+| hosting | local processes / Docker; Bunny apps `basar-web-staging` + `basar-worker-staging` at `https://staging.basarai.app`; production apps at M8 |
 | secrets store | `.env` files (local, git-ignored); GitHub environment secrets + Bunny app secrets |
 | last good version | SHA of the most recent GitHub Deployment for that environment with status `success` (GitHub Deployments API), created by the deploy workflow after a passing health gate |
 

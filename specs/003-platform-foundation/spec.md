@@ -23,6 +23,16 @@ shared contract, a staging environment can be deployed and rolled back repeatabl
 reach a bilingual (English/Arabic) shell. It contains **no product features** (no sign-in, brands,
 keys, or generation); those arrive in milestones M1–M7.
 
+## Clarifications
+
+### Session 2026-10-07
+
+- Q: Should merging into main require an approving pull-request review from another person while the owner is the only human on the repository? → A: No. Changes must go through a pull request and pass all required checks; no approval is required until a second reviewer joins, at which point one approval becomes required.
+- Q: Should the staging website be open to anyone on the internet, or restricted? → A: Restricted by a shared access password, and marked so search engines do not index it; health checks stay reachable without the password.
+- Q: When should a change be deployed to staging? → A: Automatically after every merge to the main line (once its images are built), with the same health gate and rollback; a manual deploy of any earlier reviewed version remains available.
+- Q: Which browsers must the shell be automatically tested in before a change can merge? → A: The Chromium engine (Chrome/Edge) and the WebKit engine (Safari), each at a desktop and a mobile viewport, on every change; Firefox is checked manually before each release.
+- Q: What web address should staging use? → A: `staging.basarai.app`, served over HTTPS on the hosting platform, registered as the staging site address for the identity service.
+
 ## User Scenarios & Testing *(mandatory)*
 
 Actors:
@@ -199,19 +209,25 @@ roll it back, and confirm the previous version is serving again.
 
 **Acceptance Scenarios**:
 
-1. **Given** a reviewed version on the main line, **When** a staging deployment is started, **Then**
-   versioned images of all three applications are built once and deployed in the order: database
-   changes, worker, web and backend.
-2. **Given** staging is deployed, **When** the public website address is opened, **Then** the
-   bilingual shell is served over HTTPS, and the backend and worker are not reachable directly from
+1. **Given** a change merged into the main line, **When** its images finish building, **Then** a
+   staging deployment starts automatically, and the versioned images of all three applications
+   (built once) are deployed in the order: database changes, worker, web and backend.
+2. **Given** any earlier reviewed version, **When** the owner starts a manual staging deployment for
+   it, **Then** it is deployed with the same order and health gate.
+3. **Given** staging is deployed, **When** `https://staging.basarai.app` is opened, **Then** the
+   bilingual shell is served over HTTPS with a valid certificate, and the backend and worker are not reachable directly from
    the internet.
-3. **Given** a new version whose health checks fail, **When** it is deployed, **Then** it does not
+4. **Given** a new version whose health checks fail, **When** it is deployed, **Then** it does not
    replace the healthy version, or it can be rolled back to the previous version.
-4. **Given** each application's runtime configuration, **When** it is inspected, **Then** each holds
+5. **Given** each application's runtime configuration, **When** it is inspected, **Then** each holds
    only the secrets assigned to it in plan §12.3 (the web holds no database or service credentials;
    only the worker holds the service credential).
-5. **Given** any built image, **When** it is inspected, **Then** it contains no secrets and runs as a
+6. **Given** any built image, **When** it is inspected, **Then** it contains no secrets and runs as a
    non-privileged user.
+7. **Given** the staging website, **When** a visitor opens any page without the staging access
+   password, **Then** access is refused; **When** they provide it, **Then** the page loads; and every
+   response tells search engines not to index it, while the health checks remain reachable without
+   the password.
 
 ---
 
@@ -258,6 +274,8 @@ follow-up.
 - An Arabic visitor follows a link to an English-only address: the language segment of the address
   decides the language; switching keeps the same page.
 - The browser requests an unsupported language: the English shell is served.
+- Staging is started without its access password configured: the website refuses to start rather
+  than serving staging openly.
 - A build is started without a required setting: the application fails at startup with a message
   naming the missing setting, never with a partial or insecure default.
 
@@ -293,8 +311,10 @@ follow-up.
   changes and the database test suites.
 - **FR-010**: Every change MUST trigger a secret scan, and dependency audits MUST run on every change
   and at least weekly.
-- **FR-011**: The main line MUST be protected so that changes merge only through review with all
-  required checks passing.
+- **FR-011**: The main line MUST be protected so that changes merge only through a pull request with
+  all required checks passing; direct pushes, force-pushes, and branch deletion are blocked. No
+  approving review is required while the owner is the only human reviewer; one approval becomes
+  required when a second reviewer joins.
 - **FR-012**: Checks MUST use only synthetic data and fake credentials; no real user data or real
   provider keys MAY be used in automated checks.
 
@@ -347,7 +367,9 @@ follow-up.
   backend, passing the visitor's session token, without caching private responses, transforming
   responses, or holding business logic.
 - **FR-030**: The shell MUST be keyboard operable with visible focus, labelled controls, and
-  sufficient contrast, and MUST pass automated accessibility checks in both languages.
+  sufficient contrast, and MUST pass automated accessibility checks in both languages. Automated
+  browser checks MUST run on every change in the Chromium and WebKit engines at a desktop and a
+  mobile viewport; Firefox MUST be checked manually before each release.
 - **FR-031**: The web application MUST integrate the identity service's session handling so later
   features can add sign-in, without exposing any database or service credential to the browser.
 
@@ -358,14 +380,22 @@ follow-up.
   under the same separation rule (no data platform or credential shared between environments).
 - **FR-033**: Each reviewed version on the main line MUST produce immutable, versioned images for
   the web, backend, and worker, running as non-privileged users and containing no secrets.
-- **FR-034**: Staging deployment MUST apply database changes first, then deploy the worker, then the
-  web and backend, and MUST gate traffic on health checks.
+- **FR-034**: Every change merged into the main line MUST be deployed to staging automatically once
+  its images are built, and the owner MUST be able to deploy any earlier reviewed version manually.
+  Every staging deployment MUST apply database changes first, then deploy the worker, then the web
+  and backend, MUST gate traffic on health checks, and MUST NOT run concurrently with another
+  staging deployment.
 - **FR-035**: Only the website MUST be publicly reachable; the backend and worker MUST NOT accept
   direct traffic from the internet (or, if the hosting platform cannot provide this, the documented
   fallback MUST be adopted and recorded per FR-039).
 - **FR-036**: Each application MUST receive only the secrets assigned to it in plan §12.3.
 - **FR-037**: Rolling back to the previous version of the applications MUST be possible without
   rolling back database changes.
+- **FR-040**: Every non-production website environment reachable from the internet (staging) MUST
+  require a shared access password for all pages and API paths except the two health checks, MUST
+  instruct search engines not to index or follow any page, and MUST refuse to start if its access
+  password is not configured. Local development has no password; production has neither the password
+  nor the no-index instruction.
 
 **Decisions and verification**
 
@@ -404,7 +434,8 @@ follow-up.
   and a rollback restores the previous version in under 10 minutes.
 - **SC-006**: 100% of shell pages render with the correct language and direction in both English and
   Arabic, pass automated accessibility checks with no serious or critical issues, and can be operated
-  by keyboard alone.
+  by keyboard alone — in Chromium and WebKit at desktop and mobile sizes on every change, and in
+  Firefox in the manual pre-release check.
 - **SC-007**: 100% of requests without a valid session (none, expired, forged, wrong audience) to
   non-health endpoints are refused in automated tests.
 - **SC-008**: The staging health checks respond in under 1 second and the website shell loads in
@@ -421,8 +452,9 @@ follow-up.
   confirms the details.
 - The GitHub repository `saebghazal/basarai` is the source of truth; branch protection is
   configured by the project owner.
-- Staging is reachable at a hosting-provided address or a staging subdomain of `basarai.app`;
-  production domain setup is part of release (M8), not this feature.
+- Staging is reachable at `staging.basarai.app` (DNS record for the `basarai.app` zone managed by the
+  owner; certificate issued by the hosting platform). Production domain setup (`basarai.app`) is part
+  of release (M8), not this feature.
 - A staging data platform project is created by the project owner; production is created at M8.
 - The visual design direction is owned by AntiGravity and is not part of this feature; the shell
   uses neutral placeholder styling that later design work replaces.

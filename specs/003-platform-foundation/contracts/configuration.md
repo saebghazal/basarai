@@ -21,6 +21,8 @@ variables (FR-005). Example files list names only: `apps/web/.env.example`, `app
 | `DATABASE_URL` | | ✓ | ✓ | — | **yes** | api: `basar_api.<ref>`; worker: `basar_worker.<ref>`; transaction pooler |
 | `SUPABASE_SECRET_KEY` | | | ✓ | — | **yes** | service role; worker only |
 | `WORKER_CONCURRENCY` | | | ✓ | `4` | no | used from M4 |
+| `STAGING_ACCESS_USER` | ✓ | | | unset | no | required when `ENVIRONMENT=staging` (FR-040) |
+| `STAGING_ACCESS_PASSWORD` | ✓ | | | unset | **yes** | required when `ENVIRONMENT=staging`; ≥ 24 random characters |
 
 CI-only secrets (GitHub environments, never in images): `SUPABASE_ACCESS_TOKEN`,
 `SUPABASE_DB_PASSWORD`, `BUNNY_API_KEY`. GHCR uses the built-in `GITHUB_TOKEN`.
