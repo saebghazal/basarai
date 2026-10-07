@@ -41,7 +41,8 @@ is listed in §1.3.
 2. `docs/blueprint.md` — product decisions and architecture (D-01 … D-19).
 3. Feature/layer specs in `specs/` — testable requirements:
    `001-auth-roles` (user outcomes for auth), `002-database` (spec + plan + tasks, complete),
-   `003-backend` and `004-frontend` (to be written from §7–§9 of this plan).
+   `003-platform-foundation` (M0 foundation), `004-backend` and `005-frontend` (to be written from
+   §7–§9 of this plan).
 4. This document — sequencing, structure, interfaces between layers, and engineering defaults.
 
 When this plan and a spec disagree, the spec wins and this plan is corrected.
@@ -53,10 +54,11 @@ Each layer follows Constitution → Spec → Plan → Tasks → Implement (const
 | Layer | Spec | Plan/tasks source | Status |
 |-------|------|-------------------|--------|
 | Database | `specs/002-database` | its `plan.md`, `tasks.md` | Ready to implement |
-| Backend (API + worker) | `specs/003-backend` | §7, §8, §10, §11 of this plan | Spec to write after 002 M1 lands |
-| Frontend | `specs/004-frontend` | §9, §10, §11 of this plan | Spec to write after 003 contract draft |
+| Platform foundation (M0, all layers) | `specs/003-platform-foundation` | §4, §5, §10–§12, §14 M0 of this plan | Spec written; plan next |
+| Backend (API + worker) | `specs/004-backend` | §7, §8, §10, §11 of this plan | Spec to write after 002 M1 lands |
+| Frontend | `specs/005-frontend` | §9, §10, §11 of this plan | Spec to write after 004 contract draft |
 
-`/speckit-specify 003-backend` and `/speckit-specify 004-frontend` take the matching sections of this
+`/speckit-specify 004-backend` and `/speckit-specify 005-frontend` take the matching sections of this
 plan as their input description.
 
 ### 1.3 Refinements and deviations from the blueprint
@@ -207,7 +209,7 @@ basarai/
 │   ├── implementation-plan.md             # this file
 │   ├── adr/                               # 0001-db-access-user-context, 0002-dependency-baseline, …
 │   └── runbooks/                          # operator-roles, restore-and-repurge, supabase-project-settings, deploy, incident
-├── specs/                                 # 001, 002, 003, 004
+├── specs/                                 # 001, 002, 003, 004, 005
 ├── .github/workflows/                     # database, api, web, contracts, images, deploy
 ├── pnpm-workspace.yaml
 ├── package.json                           # root scripts only
@@ -740,7 +742,7 @@ capacity are known (blueprint §7).
 | Web | Next.js 15 app, Tailwind 4 + shadcn, next-intl with `/en`/`/ar` + RTL, Supabase SSR client, proxy route, MSW setup, empty layouts; Dockerfile |
 | Contracts | §5 draft frozen; `packages/api-client` generation |
 | Infra | GHCR, Bunny staging apps (V-03), staging Supabase project, CI workflows |
-| Specs | `/speckit-specify 003-backend` (from §7–§8), `/speckit-specify 004-frontend` (from §9) → plan → tasks |
+| Specs | `specs/003-platform-foundation` governs this milestone; `/speckit-specify 004-backend` (from §7–§8), `/speckit-specify 005-frontend` (from §9) → plan → tasks |
 | **Exit** | All CI green on an empty feature set; staging deploy serves `/en` and `/ar`; `/health/ready` green; ADR 0001/0002 merged |
 
 ### M1 — Accounts (001 + 002 US1)
@@ -848,7 +850,7 @@ Hand-off protocol per milestone:
 4. **Integration** (AntiGravity): switch off mocks for the milestone's screens; e2e on staging.
 5. **Gate review** (owner): exit evidence attached to the milestone issue.
 
-Branches: one per spec/milestone (`002-database`, `003-backend-m2`, …); PRs require green CI and
+Branches: one per spec/milestone (`002-database`, `003-platform-foundation`, `004-backend-m2`, …); PRs require green CI and
 review; generated code gets the same review as handwritten code (constitution VII).
 
 ---
