@@ -14,8 +14,10 @@ Deliver milestone M0: an empty but production-shaped platform. The work:
 - A secure backend baseline: JWKS token verification, a per-user database transaction, request IDs,
   log redaction and health checks.
 - Always-on CI with a single required gate.
-- Signed, versioned container images and a staging deploy with health-gated rollback on Bunny Magic
-  Containers.
+- Versioned container images, deployed to staging at `staging.basarai.app` automatically after
+  every merge to `main` (manual deploys of earlier versions remain), with health-gated rollback on
+  Bunny Magic Containers.
+- Staging protected by a shared access password and marked `noindex` (FR-040).
 - Recorded architecture decisions and platform checks.
 
 The database portion (002 Phase 1–2) is executed as a dependency and is not re-specified here.
@@ -30,8 +32,9 @@ pydantic-settings, Uvicorn, psycopg 3 + psycopg_pool, PyJWT (JWKS), structlog, p
 
 **Storage**: Supabase (local CLI stack; staging project) — schema per `specs/002-database`
 
-**Testing**: Vitest + Testing Library; Playwright + @axe-core/playwright; pytest + pytest-asyncio +
-respx; pgTAP (002); gitleaks, pnpm audit, pip-audit
+**Testing**: Vitest + Testing Library; Playwright + @axe-core/playwright in Chromium and WebKit at
+desktop and mobile viewports on every change (Firefox manual before release); pytest +
+pytest-asyncio + respx; pgTAP (002); gitleaks, pnpm audit, pip-audit, Trivy
 
 **Target Platform**: Linux containers on Bunny Magic Containers (staging); developer machines on
 Windows/macOS/Linux
@@ -42,8 +45,10 @@ Windows/macOS/Linux
 < 1 s, shell < 2 s (SC-008)
 
 **Constraints**: Next.js major 15 (constitution); no secrets in images, logs, or repo; only the web
-is public; one transaction per request under transaction pooling; logical (direction-aware) CSS
-only
+is public, and on staging only behind the access password (health checks exempt); one transaction
+per request under transaction pooling; logical (direction-aware) CSS only; merges to `main` only
+through pull requests with a green `ci-gate` (no approval required while the owner is the only
+reviewer)
 
 **Scale/Scope**: 3 apps, 1 shared package, ~6 shell routes, 3 API endpoints, 3 workflows, 2 ADRs,
 1 verification record
@@ -116,16 +121,18 @@ specs/003-platform-foundation/
 │   │   │   ├── i18n/{routing.ts,request.ts}
 │   │   │   ├── messages/{en.json,ar.json}
 │   │   │   ├── lib/supabase/{server.ts,client.ts}
+│   │   │   ├── lib/staging-gate.ts   # Basic-auth gate + noindex for non-production (FR-040)
 │   │   │   ├── lib/api/client.ts     # wraps @basar/api-client
 │   │   │   ├── mocks/{browser.ts,handlers.ts,fixtures/}
 │   │   │   ├── components/{shell/,ui/}
 │   │   │   └── app/
 │   │   │       ├── [locale]/{layout.tsx,page.tsx,about/page.tsx,not-found.tsx}
+│   │   │       ├── robots.ts         # disallow all unless production
 │   │   │       └── api/
 │   │   │           ├── health/route.ts
 │   │   │           ├── health/ready/route.ts
 │   │   │           └── v1/[...path]/route.ts
-│   │   └── tests/{unit/,e2e/shell.spec.ts}
+│   │   └── tests/{unit/ (incl. staging-gate.test.ts, proxy.test.ts),e2e/shell.spec.ts}
 │   └── api/
 │       ├── pyproject.toml            # uv project; ruff, mypy, pytest config
 │       ├── uv.lock
@@ -170,7 +177,7 @@ one gate covers every check (research R16); 002's tasks are satisfied by that jo
 | US3 Bilingual shell (P1) | next-intl routing, layouts with `lang/dir`, switcher, two pages, catalogs, ESLint direction rule, Playwright + axe | SC-006 |
 | US4 Shared contract (P2) | OpenAPI export, `@basar/api-client` generation, drift check, ErrorCode ↔ catalog check, MSW dev-only | FR-013–FR-017 |
 | US5 Backend baseline (P2) | Settings, JWKS verification, `user_tx`, request IDs, structlog redaction, error handlers, health, `/v1/session`, worker supervisor | SC-007 |
-| US6 Staging deploy (P2) | Dockerfiles, `images.yml`, `deploy.yml`, Bunny apps, health gate, rollback, runbook | SC-004, SC-005, SC-008 |
+| US6 Staging deploy (P2) | Dockerfiles, `images.yml`, `deploy.yml` (auto after merge + manual), Bunny apps at `staging.basarai.app`, staging access gate + `noindex`, health gate, rollback, runbook | SC-004, SC-005, SC-008, FR-040 |
 | US7 Records (P3) | ADR 0001/0002, verification record V-01…V-08 | SC-010 |
 
 Dependency order: US1 → (US3 ‖ US5) → US4 → US2 (gates need the checks to exist) → US6 → US7

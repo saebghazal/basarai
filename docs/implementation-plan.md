@@ -658,7 +658,7 @@ exit gate is a passing suite, not a demo.
 | Env | Supabase project | Bunny apps | Purpose |
 |-----|------------------|-----------|---------|
 | local | Supabase CLI (Docker) | `docker compose` or dev servers | development, all automated tests |
-| staging | `basar-staging` | `basar-web-staging`, `basar-worker-staging` | integration, e2e, restore rehearsal |
+| staging | `basar-staging` | `basar-web-staging`, `basar-worker-staging` at `https://staging.basarai.app` (shared access password, `noindex`) | integration, e2e, restore rehearsal |
 | production | `basar-prod` | `basar-web`, `basar-worker` | `basarai.app` |
 
 Same region for Supabase and Bunny containers (V-03/V-06).
@@ -687,6 +687,7 @@ All run as non-root, read-only root filesystem where supported, tagged by git SH
 | `SUPABASE_SECRET_KEY` (service role) | | | ✓ |
 | `MODEL_CATALOG_PATH`, `WORKER_CONCURRENCY`, timeouts | | ✓ | ✓ |
 | `LOG_LEVEL`, `BUILD_SHA`, `ENVIRONMENT` | ✓ | ✓ | ✓ |
+| `STAGING_ACCESS_USER`, `STAGING_ACCESS_PASSWORD` (staging only; FR-040 of 003) | ✓ | | |
 
 Stored as Bunny environment secrets and GitHub environment secrets; `.env.example` files contain
 names only.

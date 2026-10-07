@@ -188,7 +188,9 @@ implementation and recorded in `docs/verification/m0-checkpoints.md` (FR-039).
 - **Decision**: Workflow `deploy.yml` with two triggers: `workflow_run` on `images.yml` completing
   successfully for a push to `main` (deploys that run's SHA automatically), and manual
   `workflow_dispatch` (input `sha`, any earlier reviewed version); `environment: staging`,
-  `concurrency: deploy-staging` (queued, not cancelled). Steps: (1) `supabase db push` with `SUPABASE_ACCESS_TOKEN` + DB password from environment
+  `concurrency: deploy-staging` (queued, not cancelled). GitHub runs `workflow_run` triggers only
+  from the default branch, so automatic deploys begin once `deploy.yml` is on `main`; before that,
+  only manual runs work. Steps: (1) `supabase db push` with `SUPABASE_ACCESS_TOKEN` + DB password from environment
   secrets; (2) update Bunny app `basar-worker-staging` image to `sha`; (3) update
   `basar-web-staging` (web + api containers) to `sha`; (4) poll `https://staging.basarai.app/api/health` (web) and
   `https://staging.basarai.app/api/health/ready` (web route forwarding to the API's `/health/ready`, R19)
@@ -227,3 +229,18 @@ implementation and recorded in `docs/verification/m0-checkpoints.md` (FR-039).
   mobile); keyboard-traversal tests run in the desktop projects only. Firefox is a manual pre-release
   check (spec clarification 2026-10-07).
 - **Rationale**: FR-030, SC-006.
+
+## R22. Staging access gate
+
+- **Decision**: HTTP Basic authentication enforced in the web middleware when `ENVIRONMENT=staging`
+  (`STAGING_ACCESS_USER` / `STAGING_ACCESS_PASSWORD`, constant-time comparison), covering every page
+  and `/api/v1/*`; `/api/health` and `/api/health/ready` are exempt so deploy gates and platform
+  probes work. Every non-production response carries `X-Robots-Tag: noindex, nofollow`, and
+  `robots.ts` disallows all outside production. The web refuses to start in staging without both
+  variables. The proxy already replaces any browser-sent `Authorization` header (the Basic
+  credentials) with the session bearer token, so the gate never reaches the API.
+- **Rationale**: Spec clarification 2026-10-07 and FR-040. Works with any hosting, needs no IP
+  management, and keeps unverified test accounts and test emails away from the public.
+- **Alternatives**: IP allowlist (breaks on changing IPs, needs hosting/CDN support); hosting-level
+  protection (not confirmed for Bunny Magic Containers, V-03); a sign-in-only gate (staging sign-up
+  itself must stay private).
